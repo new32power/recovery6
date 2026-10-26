@@ -1,0 +1,27 @@
+kind = "web"
+previewPath = "/url-sender/"
+title = "MR URL Sender"
+version = "1.0.0"
+id = "artifacts/url-sender"
+router = "path"
+
+[[services]]
+name = "web"
+paths = [ "/url-sender/" ]
+localPort = 22723
+
+[services.development]
+run = "pnpm --filter @workspace/url-sender run dev"
+
+[services.production]
+build = [ "pnpm", "--filter", "@workspace/url-sender", "run", "build" ]
+serve = "static"
+publicDir = "artifacts/url-sender/dist/public"
+
+[[services.production.rewrites]]
+from = "/*"
+to = "/index.html"
+
+[services.env]
+PORT = "22723"
+BASE_PATH = "/url-sender/"

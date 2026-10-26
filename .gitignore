@@ -1,0 +1,67 @@
+# See https://docs.github.com/en/get-started/getting-started-with-git/ignoring-files for more about ignoring files.
+
+# compiled output
+dist
+tmp
+out-tsc
+*.tsbuildinfo
+.expo
+.expo-shared
+
+# dependencies
+node_modules
+
+# IDEs and editors
+/.idea
+.project
+.classpath
+.c9/
+*.launch
+.settings/
+*.sublime-workspace
+
+# IDE - VSCode
+.vscode/*
+!.vscode/settings.json
+!.vscode/tasks.json
+!.vscode/launch.json
+!.vscode/extensions.json
+
+# misc
+/.sass-cache
+/connect.lock
+/coverage
+/libpeerconnection.log
+npm-debug.log
+yarn-error.log
+testem.log
+/typings
+
+# System Files
+.DS_Store
+Thumbs.db
+
+.cursor/rules/nx-rules.mdc
+.github/instructions/nx.instructions.md
+
+# Replit
+.cache/
+.local/
+
+# Sensitive credentials — never commit
+attached_assets/*.json
+attached_assets/*.txt
+attached_assets/*firebase*
+attached_assets/*service-account*
+attached_assets/*service_account*
+attached_assets/*Pasted*
+**/serviceAccount*.json
+**/*-firebase-adminsdk-*.json
+**/*service-account*.json
+.env
+.env.local
+.env.*.local
+
+# Local JSON DB — migrated to Postgres, do not commit
+artifacts/api-server/data/local-db.json
+artifacts/api-server/data/local-db.json.broken-*

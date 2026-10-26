@@ -1,0 +1,23 @@
+<svg width="180" height="180" viewBox="0 0 180 180" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <!-- Background -->
+  <rect width="180" height="180" rx="36" fill="#1a1a2e"/>
+
+  <!-- Antenna base -->
+  <rect x="87" y="22" width="6" height="22" rx="3" fill="#7B6FF0"/>
+  <!-- Antenna tip -->
+  <circle cx="90" cy="20" r="6" fill="#7B6FF0"/>
+
+  <!-- Head -->
+  <rect x="42" y="48" width="96" height="82" rx="20" fill="none" stroke="#7B6FF0" stroke-width="6"/>
+  <rect x="42" y="48" width="96" height="82" rx="20" fill="#2a2a4a"/>
+
+  <!-- Left eye -->
+  <rect x="57" y="68" width="24" height="22" rx="8" fill="#7B6FF0" opacity="0.9"/>
+  <!-- Right eye -->
+  <rect x="99" y="68" width="24" height="22" rx="8" fill="#7B6FF0" opacity="0.9"/>
+
+  <!-- Mouth dots -->
+  <rect x="58" y="104" width="14" height="10" rx="4" fill="#7B6FF0" opacity="0.75"/>
+  <rect x="83" y="104" width="14" height="10" rx="4" fill="#7B6FF0" opacity="0.75"/>
+  <rect x="108" y="104" width="14" height="10" rx="4" fill="#7B6FF0" opacity="0.75"/>
+</svg>

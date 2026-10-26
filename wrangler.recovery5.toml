@@ -1,0 +1,9 @@
+name = "recovery5"
+compatibility_date = "2024-12-01"
+compatibility_flags = ["nodejs_compat"]
+pages_build_output_dir = "artifacts/dashboard/dist/public"
+
+[[durable_objects.bindings]]
+name = "EVENT_BUS"
+class_name = "EventBus"
+script_name = "recovery5-event-bus"

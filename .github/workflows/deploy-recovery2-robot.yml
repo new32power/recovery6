@@ -1,0 +1,192 @@
+name: Deploy recovery2-robot
+
+on:
+  workflow_dispatch:
+    inputs:
+      preserve_pages_secrets:
+        description: "Keep the Cloudflare Pages secrets already configured on the project"
+        required: false
+        default: false
+        type: boolean
+      deploy_event_bus:
+        description: "Deploy the separate EventBus Worker"
+        required: false
+        default: true
+        type: boolean
+
+concurrency:
+  group: recovery2-robot-production
+  cancel-in-progress: false
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 10.26.1
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+
+      - run: pnpm install --no-frozen-lockfile
+
+      - name: Test deployment-specific API URL
+        run: node --test artifacts/dashboard/tests/recovery-fcm.test.mjs
+
+      - name: Build dashboard
+        run: pnpm --filter @workspace/dashboard run build
+        env:
+          BASE_PATH: /
+          VITE_API_SECRET: ${{ secrets.API_SECRET }}
+
+      - name: Validate configured secrets
+        shell: bash
+        env:
+          CF_API_TOKEN: ${{ secrets.CF_API_TOKEN }}
+          CF_ACCOUNT_ID: 89df86f5460b13ce07402bb9940fdbf8
+          PRESERVE_PAGES_SECRETS: ${{ inputs.preserve_pages_secrets }}
+          NEON_DATABASE_URL: ${{ secrets.NEON_DATABASE_URL }}
+          GOOGLE_CLIENT_ID: ${{ secrets.GOOGLE_CLIENT_ID }}
+          FIREBASE_SERVICE_ACCOUNT_JSON: ${{ secrets.FIREBASE_SERVICE_ACCOUNT_JSON }}
+          JWT_SECRET: ${{ secrets.JWT_SECRET }}
+          MASTER_ADMIN_EMAIL: ${{ secrets.MASTER_ADMIN_EMAIL }}
+          API_SECRET: ${{ secrets.API_SECRET }}
+          PIN_PEPPER: ${{ secrets.PIN_PEPPER }}
+        run: |
+          node <<'NODE'
+          const required = ["CF_API_TOKEN", "CF_ACCOUNT_ID"];
+          if (process.env.PRESERVE_PAGES_SECRETS !== "true") {
+            required.push("NEON_DATABASE_URL", "GOOGLE_CLIENT_ID", "FIREBASE_SERVICE_ACCOUNT_JSON", "JWT_SECRET", "MASTER_ADMIN_EMAIL", "API_SECRET", "PIN_PEPPER");
+          }
+          const missing = required.filter((key) => !process.env[key]);
+          if (missing.length) {
+            console.error("Missing configured GitHub secrets: " + missing.join(", "));
+            process.exit(1);
+          }
+          NODE
+
+      - name: Verify the fresh Cloudflare targets
+        shell: bash
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CF_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: 89df86f5460b13ce07402bb9940fdbf8
+        run: |
+          set -euo pipefail
+          check_present() {
+            local label="$1"
+            local url="$2"
+            local code
+            code=$(curl --silent --show-error --output /dev/null --write-out '%{http_code}' \
+              --header "Authorization: Bearer $CLOUDFLARE_API_TOKEN" "$url")
+            if [ "$code" != "200" ]; then
+              echo "$label is not present (HTTP $code); refusing to create or deploy another target."
+              exit 1
+            fi
+          }
+          base="https://api.cloudflare.com/client/v4/accounts/$CLOUDFLARE_ACCOUNT_ID"
+          check_present "New Pages project recovery2-robot" "$base/pages/projects/recovery2-robot"
+          check_present "New Worker recovery2-robot-event-bus" "$base/workers/scripts/recovery2-robot-event-bus"
+
+      - name: Deploy isolated EventBus Worker
+        if: ${{ inputs.deploy_event_bus }}
+        working-directory: artifacts/event-bus-worker
+        run: npx --yes wrangler@3 deploy --name recovery2-robot-event-bus
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CF_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: 89df86f5460b13ce07402bb9940fdbf8
+
+      - name: Set new Pages project secrets before deploy
+        if: ${{ !inputs.preserve_pages_secrets }}
+        shell: bash
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CF_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: 89df86f5460b13ce07402bb9940fdbf8
+          NEON_DATABASE_URL: ${{ secrets.NEON_DATABASE_URL }}
+          GOOGLE_CLIENT_ID: ${{ secrets.GOOGLE_CLIENT_ID }}
+          FIREBASE_SERVICE_ACCOUNT_JSON: ${{ secrets.FIREBASE_SERVICE_ACCOUNT_JSON }}
+          JWT_SECRET: ${{ secrets.JWT_SECRET }}
+          MASTER_ADMIN_EMAIL: ${{ secrets.MASTER_ADMIN_EMAIL }}
+          API_SECRET: ${{ secrets.API_SECRET }}
+          PIN_PEPPER: ${{ secrets.PIN_PEPPER }}
+        run: |
+          set -euo pipefail
+          umask 077
+          node <<'NODE'
+          const fs = require("node:fs");
+          const keys = ["NEON_DATABASE_URL", "GOOGLE_CLIENT_ID", "FIREBASE_SERVICE_ACCOUNT_JSON", "JWT_SECRET", "MASTER_ADMIN_EMAIL", "API_SECRET", "PIN_PEPPER"];
+          const values = Object.fromEntries(keys.map((key) => [key, process.env[key]]));
+          const missing = keys.filter((key) => !values[key]);
+          if (missing.length) {
+            console.error("Missing configured GitHub secrets: " + missing.join(", "));
+            process.exit(1);
+          }
+          fs.writeFileSync("/tmp/recovery2-robot-secrets.json", JSON.stringify(values), { mode: 0o600 });
+          NODE
+          npx --yes wrangler@3 pages secret bulk /tmp/recovery2-robot-secrets.json --project-name=recovery2-robot
+
+      - name: Deploy to new Cloudflare Pages project
+        shell: bash
+        run: |
+          set -euo pipefail
+          deploy_dir="$RUNNER_TEMP/recovery2-robot-deploy"
+          mkdir -p "$deploy_dir"
+          node "$GITHUB_WORKSPACE/scripts/src/prepare-recovery2-pages-config.mjs" \
+            "$deploy_dir/wrangler.toml" "$GITHUB_WORKSPACE/artifacts/dashboard/dist/public"
+          cd "$deploy_dir"
+          npx --yes wrangler@3 pages deploy --project-name=recovery2-robot --branch=main --commit-dirty=true
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CF_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: 89df86f5460b13ce07402bb9940fdbf8
+
+      - name: Verify live site
+        shell: bash
+        run: |
+          set -euo pipefail
+          for attempt in $(seq 1 12); do
+            if curl --fail --silent --show-error --output /dev/null https://recovery2-robot.pages.dev/; then
+              echo "Live site responded successfully."
+              exit 0
+            fi
+            sleep 5
+          done
+          echo "The public Pages URL did not respond after deployment."
+          exit 1
+
+      - name: Verify live WebSocket handshake and EventBus ping
+        run: |
+          node <<'NODE'
+          const socket = new WebSocket("wss://recovery2-robot.pages.dev/api/events");
+          const timeout = setTimeout(() => {
+            console.error("WebSocket did not produce an EventBus ping.");
+            socket.close();
+            process.exit(1);
+          }, 15000);
+          socket.addEventListener("error", () => {
+            clearTimeout(timeout);
+            console.error("WebSocket handshake failed.");
+            process.exit(1);
+          });
+          socket.addEventListener("message", event => {
+            try {
+              const message = JSON.parse(String(event.data));
+              if (message.event !== "ping") return;
+              clearTimeout(timeout);
+              console.log("Verified live WebSocket 101 upgrade and EventBus ping.");
+              socket.close(1000, "verification complete");
+              // Bound cleanup even if the remote close acknowledgement stalls.
+              setTimeout(() => process.exit(0), 1000);
+            } catch {}
+          });
+          NODE
+
+      - name: Remove temporary secret file
+        if: always()
+        run: |
+          rm -f /tmp/recovery2-robot-secrets.json
+          rm -rf "$RUNNER_TEMP/recovery2-robot-deploy"

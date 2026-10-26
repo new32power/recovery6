@@ -1,0 +1,8 @@
+name: Legacy recovery2 deployment disabled
+on:
+  workflow_dispatch:
+jobs:
+  disabled:
+    runs-on: ubuntu-latest
+    steps:
+      - run: echo "Legacy deployment disabled; use the recovery2-robot workflow."

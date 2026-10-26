@@ -1,0 +1,40 @@
+* {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+html, body, #root {
+  height: 100%;
+  font-family: system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
+}
+
+body {
+  background: #0f172a;
+  color: #f1f5f9;
+}
+
+/* Loading UX — keyframes defined once, deduped across all loader instances */
+@keyframes circLoaderSpin {
+  to { transform: rotate(360deg); }
+}
+@keyframes topProgSlide {
+  0%   { background-position: 200% 0; }
+  100% { background-position: -200% 0; }
+}
+@keyframes topProgGlow {
+  0%   { transform: translateX(-120%); }
+  100% { transform: translateX(420%); }
+}
+.circ-loader-spin {
+  animation: circLoaderSpin 0.9s linear infinite;
+  transform-origin: 50% 50%;
+}
+
+/* Header horizontal scrollbar — thin + indigo colored */
+.header-scroll::-webkit-scrollbar { height: 3px; }
+.header-scroll::-webkit-scrollbar-track { background: transparent; }
+.header-scroll::-webkit-scrollbar-thumb { background: #6366f1; border-radius: 99px; }
+@media (prefers-reduced-motion: reduce) {
+  .circ-loader-spin { animation-duration: 3s; }
+}

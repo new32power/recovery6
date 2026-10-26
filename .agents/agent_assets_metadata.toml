@@ -1,0 +1,8 @@
+uploads = []
+generated = []
+
+[[outputs]]
+id = "yFX9sa_H1QmvfKgM_dRPR"
+uri = "file://exports/ready-code-complete.zip"
+type = "unspecified"
+title = "ready-code-complete.zip (full source, latest)"

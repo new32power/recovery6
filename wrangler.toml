@@ -1,0 +1,10 @@
+name = "mr-panel"
+compatibility_date = "2024-12-01"
+compatibility_flags = ["nodejs_compat"]
+pages_build_output_dir = "artifacts/dashboard/dist/public"
+
+# EventBus Durable Object (in separate event-bus-worker)
+[[durable_objects.bindings]]
+name = "EVENT_BUS"
+class_name = "EventBus"
+script_name = "event-bus-worker"

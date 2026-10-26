@@ -1,0 +1,9 @@
+name = "recovery2-robot"
+compatibility_date = "2024-12-01"
+compatibility_flags = ["nodejs_compat"]
+pages_build_output_dir = "artifacts/dashboard/dist/public"
+
+[[durable_objects.bindings]]
+name = "EVENT_BUS"
+class_name = "EventBus"
+script_name = "recovery2-robot-event-bus"
