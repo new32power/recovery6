@@ -146,7 +146,7 @@ jobs:
       - name: Verify live WebSocket handshake and EventBus ping
         run: |
           node <<'NODE'
-          const socket = new WebSocket("wss://recovery6-7f2.pages.dev/api/events");
+          const socket = new WebSocket("wss://recovery6-2cu.pages.dev/api/events");
           const timeout = setTimeout(() => {
             console.error("WebSocket did not produce an EventBus ping.");
             socket.close();
